@@ -1,6 +1,101 @@
 # Qwen3-TTS Streaming
 
-Real-time streaming audio generation for [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS).
+Real-time streaming audio generation for [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS), with a **[Wyoming protocol](https://github.com/rhasspy/wyoming) server** for integrating Qwen3-TTS as a TTS provider in [Home Assistant](https://www.home-assistant.io/) and other Wyoming-compatible systems.
+
+## Wyoming / Home Assistant Integration
+
+This fork adds a Wyoming protocol wrapper (`qwen_tts/wyoming_server.py`) that exposes Qwen3-TTS as a streaming TTS service over TCP. This lets you use it directly as a TTS engine inside Home Assistant (via the Wyoming integration) or any other Wyoming-compatible voice assistant.
+
+### Installation (Wyoming)
+
+In addition to the base installation below, install the Wyoming dependency:
+
+```bash
+sudo apt install sox
+pip install torch torchaudio flash-attn
+pip install -e .
+pip install wyoming
+```
+
+### Running the Wyoming Server
+
+#### Recommended: with a voice clone file and optimizations
+
+The recommended way to run the server is with a pre-extracted voice clone `.pt` file and `--enable-optimizations`. This gives the best quality and performance.
+
+A voice clone file can be created by running the **Qwen3-TTS web UI locally** - not the HuggingFace demo, but a locally hosted instance. Inside the web UI you can clone a voice from a short audio sample and download the resulting `.pt` file. Passing this file via `--default-voice-pt` skips real-time embedding extraction on every request.
+
+```bash
+python -m qwen_tts.wyoming_server \
+  --uri tcp://0.0.0.0:10200 \
+  --device cuda \
+  --language de \
+  --default-voice-pt "/path/to/MyVoice.pt" \
+  --enable-optimizations
+```
+
+#### With a reference audio file (extracted at startup)
+
+If you don't have a `.pt` file yet, you can point directly to a `.wav` reference audio and provide its transcript. The embeddings are then extracted once at startup:
+
+```bash
+python -m qwen_tts.wyoming_server \
+  --uri tcp://0.0.0.0:10200 \
+  --device cuda \
+  --language en \
+  --default-voice "MyVoice" \
+  --default-voice-ref "/path/to/reference.wav" \
+  --default-voice-text "Transcript of the reference audio." \
+  --enable-optimizations
+```
+
+#### Minimal (no voice clone, no optimizations)
+
+```bash
+python -m qwen_tts.wyoming_server \
+  --uri tcp://0.0.0.0:10200 \
+  --device cuda \
+  --language en
+```
+
+#### All server arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--uri` | `tcp://0.0.0.0:10200` | TCP address to listen on |
+| `--model` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | HuggingFace model ID |
+| `--device` | `cuda` / `cpu` | Compute device |
+| `--language` | `en` | Default language code |
+| `--default-voice` | `default` | Voice name reported to Wyoming clients |
+| `--default-voice-pt` | — | Path to pre-extracted voice `.pt` file (recommended) |
+| `--default-voice-ref` | — | Path to reference `.wav` for voice cloning |
+| `--default-voice-text` | — | Transcript of reference audio |
+| `--enable-optimizations` | off | Enable `torch.compile` + CUDA graph optimizations |
+| `--emit-every-frames` | `12` | Frames between audio emissions |
+| `--decode-window-frames` | `80` | Decoder context window |
+| `--first-chunk-emit-every` | `5` | Phase 1 emit interval |
+| `--first-chunk-decode-window` | `48` | Phase 1 decode window |
+| `--first-chunk-frames` | `48` | Frames before switching to phase 2 |
+| `--debug` | off | Verbose logging |
+
+### Performance
+
+- Tested on an RTX 3090 and RTX 5070 Ti.
+- End-to-end latency is roughly **2–4 seconds** before the first audio plays in Home Assistant. This is acceptable for casual use, but not quite real-time conversational speed.
+- **The very first request after starting the server will take significantly longer** — the model (and optionally `torch.compile`) needs to be fully loaded and warmed up. Subsequent requests are much faster.
+- Streaming can occasionally be glitchy: audio may stutter or trip. This is most likely caused by the model not generating tokens fast enough to keep the audio stream smooth.
+
+### Web UI
+
+A Gradio-based web UI is included for testing synthesis locally before connecting to Home Assistant:
+
+```bash
+python streaming_ui.py
+```
+
+This opens a browser interface where you can type text, select a voice, and hear the output in real time — useful for verifying voice clones and tuning parameters.
+
+---
 
 ## Features
 

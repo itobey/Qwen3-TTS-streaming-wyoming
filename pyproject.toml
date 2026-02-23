@@ -29,6 +29,7 @@ dependencies = [
   "sox",
   "onnxruntime",
   "einops",
+  "wyoming>=1.5.0",
 ]
 
 [project.urls]
@@ -37,6 +38,7 @@ Repository = "https://github.com/Qwen/Qwen3-TTS"
 
 [project.scripts]
 qwen-tts-demo = "qwen_tts.cli.demo:main"
+qwen-tts-wyoming = "qwen_tts.wyoming_server:main"
 
 [tool.setuptools]
 packages = { find = { where = ["."] , include = ["qwen_tts*"] } }
