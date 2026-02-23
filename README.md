@@ -1,4 +1,4 @@
-# Qwen3-TTS Streaming
+# Qwen3-TTS Streaming Wyoming
 
 Real-time streaming audio generation for [Qwen3-TTS](https://github.com/QwenLM/Qwen3-TTS), with a **[Wyoming protocol](https://github.com/rhasspy/wyoming) server** for integrating Qwen3-TTS as a TTS provider in [Home Assistant](https://www.home-assistant.io/) and other Wyoming-compatible systems.
 
